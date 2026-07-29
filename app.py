@@ -48,9 +48,16 @@ def create_app():
     # Configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     # Fix Render's legacy "postgres://" scheme — SQLAlchemy 2.x requires "postgresql://"
-    db_url = os.getenv('DATABASE_URL', 'sqlite:///' + os.path.join(BASE_DIR, 'instance', 'chronic_disease.db'))
-    if db_url.startswith('postgres://'):
-        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    raw_db_url = os.getenv('DATABASE_URL', '')
+    if not raw_db_url or raw_db_url == 'sqlite:///chronic_disease.db':
+        # Use an absolute path so SQLite can always write the file
+        instance_dir = os.path.join(BASE_DIR, 'instance')
+        os.makedirs(instance_dir, exist_ok=True)
+        db_url = 'sqlite:///' + os.path.join(instance_dir, 'chronic_disease.db')
+    elif raw_db_url.startswith('postgres://'):
+        db_url = raw_db_url.replace('postgres://', 'postgresql://', 1)
+    else:
+        db_url = raw_db_url
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
