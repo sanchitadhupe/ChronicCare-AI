@@ -38,9 +38,13 @@ logger = logging.getLogger(__name__)
 
 
 def create_app():
+    # Ensure instance directory exists before anything else touches the DB
+    instance_dir = os.path.join(BASE_DIR, 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+
     app = Flask(
         __name__,
-        instance_path=os.path.join(BASE_DIR, 'instance'),
+        instance_path=instance_dir,
         template_folder=os.path.join(BASE_DIR, 'templates'),
         static_folder=os.path.join(BASE_DIR, 'static'),
     )
@@ -49,10 +53,8 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     # Fix Render's legacy "postgres://" scheme — SQLAlchemy 2.x requires "postgresql://"
     raw_db_url = os.getenv('DATABASE_URL', '')
-    if not raw_db_url or raw_db_url == 'sqlite:///chronic_disease.db':
+    if not raw_db_url or raw_db_url.startswith('sqlite:///') and not os.path.isabs(raw_db_url.replace('sqlite:///', '')):
         # Use an absolute path so SQLite can always write the file
-        instance_dir = os.path.join(BASE_DIR, 'instance')
-        os.makedirs(instance_dir, exist_ok=True)
         db_url = 'sqlite:///' + os.path.join(instance_dir, 'chronic_disease.db')
     elif raw_db_url.startswith('postgres://'):
         db_url = raw_db_url.replace('postgres://', 'postgresql://', 1)

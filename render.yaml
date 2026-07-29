@@ -9,7 +9,5 @@ services:
     envVars:
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        value: sqlite:///chronic_disease.db
       - key: MAX_CONTENT_LENGTH
         value: "16777216"
