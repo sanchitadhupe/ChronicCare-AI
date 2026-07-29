@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Risk Assessment{% endblock %}
+{% block page_title %}Health Risk Assessment{% endblock %}
+
+{% block content %}
+{% if ai_risk %}
+<div class="card mb-4 border-warning">
+  <div class="card-header bg-warning text-dark"><i class="bi bi-shield-exclamation me-2"></i>AI Risk Assessment — IBM Granite</div>
+  <div class="card-body"><div class="ai-response-text">{{ ai_risk | replace('\n', '<br>') | safe }}</div>
+  <p class="text-muted small mt-3 mb-0">⚠️ This AI assessment is for educational purposes only. Consult your healthcare provider for a clinical evaluation.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <!-- Vital Status Cards -->
+    <div class="card">
+      <div class="card-header"><i class="bi bi-activity me-2"></i>Current Vital Status</div>
+      <div class="card-body">
+        {% if recent_records %}
+        {% set latest = recent_records[0] %}
+        <div class="risk-vitals">
+          {% if latest.blood_pressure_systolic %}
+          <div class="risk-vital-row">
+            <span class="rv-label">Blood Pressure</span>
+            <span class="rv-val">{{ latest.blood_pressure_systolic }}/{{ latest.blood_pressure_diastolic }} mmHg</span>
+            <span class="rv-badge {% if latest.blood_pressure_systolic >= 180 %}critical{% elif latest.blood_pressure_systolic >= 140 %}high{% elif latest.blood_pressure_systolic >= 130 %}elevated{% else %}normal{% endif %}">
+              {% if latest.blood_pressure_systolic >= 180 %}Crisis{% elif latest.blood_pressure_systolic >= 140 %}High{% elif latest.blood_pressure_systolic >= 130 %}Elevated{% else %}Normal{% endif %}
+            </span>
+          </div>
+          {% endif %}
+          {% if latest.blood_sugar %}
+          <div class="risk-vital-row">
+            <span class="rv-label">Blood Sugar</span>
+            <span class="rv-val">{{ latest.blood_sugar }} mg/dL</span>
+            <span class="rv-badge {% if latest.blood_sugar >= 400 %}critical{% elif latest.blood_sugar >= 200 %}high{% elif latest.blood_sugar >= 126 %}elevated{% elif latest.blood_sugar < 70 %}critical{% else %}normal{% endif %}">
+              {% if latest.blood_sugar >= 400 %}Critical{% elif latest.blood_sugar >= 200 %}High{% elif latest.blood_sugar >= 126 %}Elevated{% elif latest.blood_sugar < 70 %}Low{% else %}Normal{% endif %}
+            </span>
+          </div>
+          {% endif %}
+          {% if latest.heart_rate %}
+          <div class="risk-vital-row">
+            <span class="rv-label">Heart Rate</span>
+            <span class="rv-val">{{ latest.heart_rate }} bpm</span>
+            <span class="rv-badge {% if latest.heart_rate > 150 or latest.heart_rate < 40 %}critical{% elif latest.heart_rate > 100 or latest.heart_rate < 60 %}elevated{% else %}normal{% endif %}">
+              {% if latest.heart_rate > 150 or latest.heart_rate < 40 %}Critical{% elif latest.heart_rate > 100 %}High{% elif latest.heart_rate < 60 %}Low{% else %}Normal{% endif %}
+            </span>
+          </div>
+          {% endif %}
+          {% if latest.oxygen_saturation %}
+          <div class="risk-vital-row">
+            <span class="rv-label">SpO2</span>
+            <span class="rv-val">{{ latest.oxygen_saturation }}%</span>
+            <span class="rv-badge {% if latest.oxygen_saturation < 90 %}critical{% elif latest.oxygen_saturation < 95 %}high{% else %}normal{% endif %}">
+              {% if latest.oxygen_saturation < 90 %}Critical{% elif latest.oxygen_saturation < 95 %}Low{% else %}Normal{% endif %}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center py-3 text-muted">
+          <p>No health records found. <a href="{{ url_for('dashboard.health_monitor') }}">Log vitals first</a> for risk assessment.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Risk Factors</div>
+      <div class="card-body">
+        {% if profile %}
+        {% set risk_score = 0 %}
+        {% set conditions = profile.chronic_conditions | from_json if profile.chronic_conditions else [] %}
+        <div class="risk-factor-list">
+          {% if profile.age and profile.age > 60 %}
+          <div class="risk-factor high">🔴 Age > 60 years ({{ profile.age }} yrs)</div>
+          {% endif %}
+          {% for cond in conditions %}
+          <div class="risk-factor elevated">🟡 Condition: {{ cond|replace('_',' ')|title }}</div>
+          {% endfor %}
+          {% if profile.smoking_status == 'current' %}
+          <div class="risk-factor high">🔴 Active Smoker</div>
+          {% endif %}
+          {% if profile.bmi and profile.bmi >= 30 %}
+          <div class="risk-factor high">🔴 Obese (BMI: {{ profile.bmi }})</div>
+          {% elif profile.bmi and profile.bmi >= 25 %}
+          <div class="risk-factor elevated">🟡 Overweight (BMI: {{ profile.bmi }})</div>
+          {% endif %}
+          {% if profile.physical_activity == 'sedentary' %}
+          <div class="risk-factor elevated">🟡 Sedentary Lifestyle</div>
+          {% endif %}
+          {% if profile.alcohol_consumption in ['moderate', 'heavy'] %}
+          <div class="risk-factor elevated">🟡 Moderate/Heavy Alcohol Use</div>
+          {% endif %}
+        </div>
+        {% if not conditions and not (profile.age and profile.age > 60) %}
+        <p class="text-success"><i class="bi bi-check-circle me-2"></i>No major risk factors detected from profile.</p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted">Complete your <a href="{{ url_for('dashboard.profile') }}">health profile</a> for a detailed risk factor analysis.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

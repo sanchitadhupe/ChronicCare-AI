@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Patient Profile{% endblock %}
+{% block page_title %}My Health Profile{% endblock %}
+
+{% block content %}
+{% if ai_assessment %}
+<div class="card mb-4 border-primary">
+  <div class="card-header bg-primary text-white"><i class="bi bi-robot me-2"></i>AI Profile Assessment — IBM Granite</div>
+  <div class="card-body">
+    <div class="ai-response-text">{{ ai_assessment | replace('\n', '<br>') | safe }}</div>
+    <p class="text-muted small mt-3 mb-0">⚠️ This is AI-generated guidance only. Consult your doctor for medical advice.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      <!-- Personal Info -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-person me-2"></i>Personal Information</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.full_name.label.text }} *</label>
+              {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else "")) }}
+              {% for e in form.full_name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.age.label.text }} *</label>
+              {{ form.age(class="form-control" + (" is-invalid" if form.age.errors else "")) }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.gender.label.text }}</label>
+              {{ form.gender(class="form-select") }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.blood_group.label.text }}</label>
+              {{ form.blood_group(class="form-select") }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.height_cm.label.text }}</label>
+              <div class="input-group">{{ form.height_cm(class="form-control") }}<span class="input-group-text">cm</span></div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.weight_kg.label.text }}</label>
+              <div class="input-group">{{ form.weight_kg(class="form-control") }}<span class="input-group-text">kg</span></div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">BMI</label>
+              <div class="form-control-plaintext fw-bold {% if profile and profile.bmi %}{% if profile.bmi >= 30 %}text-danger{% elif profile.bmi >= 25 %}text-warning{% else %}text-success{% endif %}{% endif %}">
+                {% if profile and profile.bmi %}{{ profile.bmi }} — {{ profile.bmi_category }}{% else %}—{% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.phone.label.text }}</label>
+              {{ form.phone(class="form-control", placeholder="+91 XXXXX XXXXX") }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.address.label.text }}</label>
+              {{ form.address(class="form-control", rows="2") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medical Info -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-heart-pulse me-2"></i>Medical Information</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">{{ form.chronic_conditions.label.text }}</label>
+            <div class="conditions-grid">
+              {% for subfield in form.chronic_conditions %}
+              <div class="condition-check">
+                {{ subfield(class="form-check-input") }}
+                <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.allergies.label.text }}</label>
+              {{ form.allergies(class="form-control", rows="3", placeholder="Penicillin\nDust\n...") }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.family_history.label.text }}</label>
+              {{ form.family_history(class="form-control", rows="3", placeholder="Father: Diabetes\nMother: Hypertension...") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lifestyle -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-person-walking me-2"></i>Lifestyle</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">{{ form.smoking_status.label.text }}</label>
+              {{ form.smoking_status(class="form-select") }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.alcohol_consumption.label.text }}</label>
+              {{ form.alcohol_consumption(class="form-select") }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.physical_activity.label.text }}</label>
+              {{ form.physical_activity(class="form-select") }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.diet_type.label.text }}</label>
+              {{ form.diet_type(class="form-select") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emergency & Doctor -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-telephone me-2"></i>Emergency Contact & Doctor</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.emergency_contact.label.text }}</label>
+              {{ form.emergency_contact(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.emergency_phone.label.text }}</label>
+              {{ form.emergency_phone(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.primary_doctor.label.text }}</label>
+              {{ form.primary_doctor(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.doctor_phone.label.text }}</label>
+              {{ form.doctor_phone(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.hospital.label.text }}</label>
+              {{ form.hospital(class="form-control") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{ form.submit(class="btn btn-primary btn-lg") }}
+    </form>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-lg-4">
+    {% if profile and profile.bmi %}
+    <div class="card mb-3 bmi-card">
+      <div class="card-header"><i class="bi bi-calculator me-2"></i>BMI Status</div>
+      <div class="card-body text-center">
+        <div class="bmi-value {% if profile.bmi >= 30 %}text-danger{% elif profile.bmi >= 25 %}text-warning{% else %}text-success{% endif %}">{{ profile.bmi }}</div>
+        <div class="bmi-cat">{{ profile.bmi_category }}</div>
+        <div class="bmi-bar-wrap mt-3">
+          <div class="bmi-bar">
+            <div class="bmi-bar-fill" style="width: {{ [[(profile.bmi - 15) / 25 * 100, 0]|max, 100]|min }}%"></div>
+            <div class="bmi-needle" style="left: {{ [[(profile.bmi - 15) / 25 * 100, 0]|max, 100]|min }}%"></div>
+          </div>
+          <div class="bmi-labels"><span>15</span><span>18.5</span><span>25</span><span>30</span><span>40</span></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-robot me-2"></i>AI Actions</div>
+      <div class="card-body d-grid gap-2">
+        <a href="?ai_assess=1" class="btn btn-primary"><i class="bi bi-magic me-2"></i>Get AI Health Assessment</a>
+        <a href="{{ url_for('dashboard.risk_assessment') }}" class="btn btn-outline-warning"><i class="bi bi-shield-exclamation me-2"></i>Risk Assessment</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

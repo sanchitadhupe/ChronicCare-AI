@@ -1,0 +1,29 @@
+﻿# Virtual Environment
+venv/
+env/
+
+# Environment Variables - NEVER commit
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+*.db
+*.sqlite3
+instance/
+
+# Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

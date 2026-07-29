@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+{% block auth_content %}
+<div class="auth-card">
+  <div class="auth-logo">
+    <span style="font-size:3rem">🏥</span>
+    <h2 class="mt-2 mb-0">HealthGuard <span style="color:var(--accent)">AI</span></h2>
+    <p class="text-muted small">Your personal chronic disease companion</p>
+  </div>
+  <div class="auth-form-wrap">
+    <h4 class="mb-1">Create your account</h4>
+    <p class="text-muted small mb-4">Start monitoring your health with AI</p>
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label">{{ form.username.label.text }}</label>
+        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="johndoe") }}
+        {% for err in form.username.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">{{ form.email.label.text }}</label>
+        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="you@example.com") }}
+        {% for err in form.email.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">{{ form.password.label.text }}</label>
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Min. 8 characters") }}
+        {% for err in form.password.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="mb-4">
+        <label class="form-label">{{ form.confirm_password.label.text }}</label>
+        {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Repeat password") }}
+        {% for err in form.confirm_password.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      {{ form.submit(class="btn btn-primary w-100 btn-lg") }}
+    </form>
+    <p class="text-center mt-3 small">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+  </div>
+  <div class="auth-footer">
+    <small class="text-muted">🔒 Your health data is encrypted and secure</small>
+  </div>
+</div>
+{% endblock %}

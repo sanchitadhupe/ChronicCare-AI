@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Medications{% endblock %}
+{% block page_title %}Medication Tracker{% endblock %}
+
+{% block content %}
+{% if ai_reminders %}
+<div class="card mb-4 border-success">
+  <div class="card-header bg-success text-white"><i class="bi bi-robot me-2"></i>AI Medication Guidance — IBM Granite</div>
+  <div class="card-body"><div class="ai-response-text">{{ ai_reminders | replace('\n', '<br>') | safe }}</div></div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>Add Medication</div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label">{{ form.name.label.text }} *</label>
+            {{ form.name(class="form-control", placeholder="e.g. Metformin") }}
+            {% for e in form.name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">{{ form.dosage.label.text }}</label>
+              {{ form.dosage(class="form-control", placeholder="500mg") }}
+            </div>
+            <div class="col-6">
+              <label class="form-label">{{ form.frequency.label.text }}</label>
+              {{ form.frequency(class="form-select") }}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.timing.label.text }}</label>
+            {{ form.timing(class="form-control", placeholder="Morning with food, Night before bed") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.condition_for.label.text }}</label>
+            {{ form.condition_for(class="form-control", placeholder="Type 2 Diabetes") }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">{{ form.start_date.label.text }}</label>
+              {{ form.start_date(class="form-control", type="date") }}
+            </div>
+            <div class="col-6">
+              <label class="form-label">{{ form.end_date.label.text }}</label>
+              {{ form.end_date(class="form-control", type="date") }}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.prescribed_by.label.text }}</label>
+            {{ form.prescribed_by(class="form-control", placeholder="Dr. Name") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.instructions.label.text }}</label>
+            {{ form.instructions(class="form-control", rows="2") }}
+          </div>
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">My Medications</h5>
+      <a href="?ai_remind=1" class="btn btn-outline-primary btn-sm"><i class="bi bi-robot me-1"></i>AI Guidance</a>
+    </div>
+
+    <!-- Active Medications -->
+    {% set active_meds = medications | selectattr('is_active') | list %}
+    {% set inactive_meds = medications | rejectattr('is_active') | list %}
+
+    {% if active_meds %}
+    <h6 class="text-success mb-2">✅ Active ({{ active_meds|length }})</h6>
+    {% for med in active_meds %}
+    <div class="med-card active">
+      <div class="med-card-header">
+        <div class="med-name-row">
+          <span class="med-pill-icon">💊</span>
+          <div>
+            <div class="med-card-name">{{ med.name }}</div>
+            <div class="med-card-dosage">{{ med.dosage or '' }} &middot; {{ (med.frequency or '')|replace('_',' ') }}</div>
+          </div>
+        </div>
+        <div class="med-actions">
+          <form method="POST" action="{{ url_for('dashboard.toggle_medication', med_id=med.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-secondary" title="Deactivate">⏸</button>
+          </form>
+          <form method="POST" action="{{ url_for('dashboard.delete_medication', med_id=med.id) }}" class="d-inline" onsubmit="return confirm('Remove medication?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger" title="Delete">🗑</button>
+          </form>
+        </div>
+      </div>
+      <div class="med-card-details">
+        <span><i class="bi bi-clock me-1"></i>{{ med.timing or 'As directed' }}</span>
+        {% if med.condition_for %}<span><i class="bi bi-clipboard me-1"></i>{{ med.condition_for }}</span>{% endif %}
+        {% if med.prescribed_by %}<span><i class="bi bi-person-badge me-1"></i>{{ med.prescribed_by }}</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if inactive_meds %}
+    <h6 class="text-muted mb-2 mt-4">⏸ Inactive ({{ inactive_meds|length }})</h6>
+    {% for med in inactive_meds %}
+    <div class="med-card inactive">
+      <div class="med-card-header">
+        <div class="med-name-row">
+          <span class="med-pill-icon">💊</span>
+          <div>
+            <div class="med-card-name text-muted">{{ med.name }}</div>
+            <div class="med-card-dosage text-muted">{{ med.dosage or '' }}</div>
+          </div>
+        </div>
+        <div class="med-actions">
+          <form method="POST" action="{{ url_for('dashboard.toggle_medication', med_id=med.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-success">▶ Activate</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if not medications %}
+    <div class="empty-state text-center py-5">
+      <i class="bi bi-capsule" style="font-size:3rem;color:var(--muted)"></i>
+      <p class="mt-3 text-muted">No medications added yet.<br>Add your first medication to get AI-powered reminders.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

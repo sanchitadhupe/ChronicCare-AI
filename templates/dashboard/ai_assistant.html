@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}AI Health Assistant{% endblock %}
+{% block page_title %}AI Health Assistant{% endblock %}
+{% block head %}{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+  <!-- Chat Window -->
+  <div class="chat-main">
+    <div class="chat-header">
+      <div class="chat-agent-info">
+        <div class="chat-agent-avatar">🤖</div>
+        <div>
+          <div class="chat-agent-name">HealthGuard AI</div>
+          <div class="chat-agent-sub">Smart Health Assistant &middot; Personalised to your data</div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge bg-success-subtle text-success"><i class="bi bi-circle-fill" style="font-size:7px"></i> Online</span>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- Welcome message -->
+      <div class="chat-msg assistant">
+        <div class="msg-avatar">🤖</div>
+        <div class="msg-bubble">
+          <p class="mb-2">Hello! I'm <strong>HealthGuard AI</strong>, your personal chronic disease companion. 👋</p>
+          <p class="mb-2">I can help you with:</p>
+          <ul class="mb-2">
+            <li>🩺 Understanding your symptoms</li>
+            <li>💊 Medication guidance & reminders</li>
+            <li>🥗 Personalized diet & lifestyle plans</li>
+            <li>📊 Health risk assessment</li>
+            <li>📋 Health summaries & reports</li>
+          </ul>
+          <p class="mb-0 small text-muted">What can I help you with today?</p>
+        </div>
+      </div>
+
+      {% for chat in chat_history %}
+      <div class="chat-msg user">
+        <div class="msg-bubble user-bubble">{{ chat.message }}</div>
+        <div class="msg-avatar user-av">{{ current_user.username[0].upper() }}</div>
+      </div>
+      <div class="chat-msg assistant">
+        <div class="msg-avatar">🤖</div>
+        <div>
+          <div class="msg-bubble">{{ chat.response | replace('\n', '<br>') | safe }}</div>
+          <div class="msg-meta">
+            <span class="agent-badge">{{ chat.agent_type }}</span>
+            <span class="msg-time">{{ chat.timestamp.strftime('%d %b, %H:%M') }}</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Typing indicator — must be INSIDE chatMessages for insertBefore to work -->
+      <div class="typing-indicator d-none" id="typingIndicator">
+        <div class="msg-avatar">🤖</div>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+      <div class="chat-quick-prompts" id="quickPrompts">
+        <button class="quick-prompt-btn" onclick="sendQuick('What should I eat for diabetes?')">🥗 Diet advice</button>
+        <button class="quick-prompt-btn" onclick="sendQuick('Analyze my recent health vitals')">📊 Analyze vitals</button>
+        <button class="quick-prompt-btn" onclick="sendQuick('Give me a weekly lifestyle plan')">🏃 Lifestyle plan</button>
+        <button class="quick-prompt-btn" onclick="sendQuick('What are my medication tips?')">💊 Med tips</button>
+        <button class="quick-prompt-btn" onclick="sendQuick('What is my health risk level?')">🛡️ Risk check</button>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chatInput" class="chat-input" placeholder="Ask anything about your health..." rows="2"></textarea>
+        <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+      <p class="chat-disclaimer">
+        ⚠️ AI guidance only — not a substitute for professional medical advice. Emergency: call <strong>112</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Sidebar Info -->
+  <div class="chat-sidebar">
+    <div class="card mb-3">
+      <div class="card-header small"><i class="bi bi-cpu me-1"></i>AI Agents Active</div>
+      <div class="card-body p-2">
+        <div class="agent-list">
+          {% set agents_list = [('🩺', 'Symptoms'), ('⚕️', 'Risk Check'), ('💊', 'Medications'), ('🥗', 'Diet & Nutrition'), ('🏃', 'Exercise'), ('😴', 'Sleep'), ('🚨', 'Emergency')] %}
+          {% for icon, name in agents_list %}
+          <div class="agent-item"><span>{{ icon }}</span><span class="small">{{ name }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if profile %}
+    <div class="card mb-3">
+      <div class="card-header small"><i class="bi bi-person me-1"></i>Your Context</div>
+      <div class="card-body p-3 small">
+        <div><strong>Name:</strong> {{ profile.full_name or 'N/A' }}</div>
+        <div><strong>Age:</strong> {{ profile.age or 'N/A' }}</div>
+        {% if profile.chronic_conditions %}
+        {% set conds = profile.chronic_conditions | from_json %}
+        <div class="mt-1"><strong>Conditions:</strong>
+          {% for c in conds %}<span class="badge bg-info-subtle text-info me-1">{{ c|replace('_',' ')|title }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        {% if profile.bmi %}
+        <div class="mt-1"><strong>BMI:</strong> {{ profile.bmi }} ({{ profile.bmi_category }})</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header small"><i class="bi bi-exclamation-triangle me-1"></i>Emergency</div>
+      <div class="card-body p-3 text-center">
+        <div class="text-danger fw-bold fs-4">112</div>
+        <div class="small text-muted">India Emergency</div>
+        <div class="text-danger fw-bold mt-2">102 / 108</div>
+        <div class="small text-muted">Ambulance</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// CSRF token embedded directly from server — most reliable method
+const CSRF_TOKEN = "{{ csrf_token() }}";
+
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const typingIndicator = document.getElementById('typingIndicator');
+
+// Scroll to bottom
+chatMessages.scrollTop = chatMessages.scrollHeight;
+
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function sendQuick(text) { chatInput.value = text; sendMessage(); }
+
+async function sendMessage() {
+  const msg = chatInput.value.trim();
+  if (!msg || sendBtn.disabled) return;
+
+  // Append user bubble
+  appendMsg('user', msg);
+  chatInput.value = '';
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+  typingIndicator.classList.remove('d-none');
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // 90-second timeout — AI can be slow
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90000);
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ message: msg }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    typingIndicator.classList.add('d-none');
+    if (data.response) {
+      appendAssistantMsg(data.response, data.agent_type);
+    } else {
+      appendAssistantMsg('Sorry, I encountered an error. Please try again.', 'Error');
+    }
+  } catch(e) {
+    clearTimeout(timer);
+    typingIndicator.classList.add('d-none');
+    if (e.name === 'AbortError') {
+      appendAssistantMsg('The AI is taking too long to respond. Please try a shorter question.', 'Timeout');
+    } else {
+      appendAssistantMsg('Connection error. Make sure the server is running and try again.', 'Error');
+    }
+  }
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = '<i class="bi bi-send-fill"></i>';
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function appendMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  if (role === 'user') {
+    div.innerHTML = `<div class="msg-bubble user-bubble">${escapeHtml(text)}</div><div class="msg-avatar user-av">{{ current_user.username[0].upper() }}</div>`;
+  }
+  chatMessages.insertBefore(div, typingIndicator);
+}
+
+function appendAssistantMsg(text, agentType) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg assistant';
+  const formatted = text.replace(/\n/g, '<br>');
+  div.innerHTML = `<div class="msg-avatar">🤖</div><div><div class="msg-bubble">${formatted}</div><div class="msg-meta"><span class="agent-badge">${agentType || 'AI'}</span></div></div>`;
+  chatMessages.insertBefore(div, typingIndicator);
+}
+
+function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getCsrfToken() { return CSRF_TOKEN; }
+</script>
+{% endblock %}

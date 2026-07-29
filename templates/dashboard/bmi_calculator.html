@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}BMI Calculator{% endblock %}
+{% block page_title %}BMI Calculator{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-calculator me-2"></i>Calculate Your BMI</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Height</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="bmiHeight" placeholder="{{ profile.height_cm or '170' }}" value="{{ profile.height_cm or '' }}">
+            <span class="input-group-text">cm</span>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Weight</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="bmiWeight" placeholder="{{ profile.weight_kg or '70' }}" value="{{ profile.weight_kg or '' }}">
+            <span class="input-group-text">kg</span>
+          </div>
+        </div>
+        <button class="btn btn-primary w-100 btn-lg" onclick="calculateBMI()">Calculate BMI</button>
+
+        <div id="bmiResult" class="mt-4 d-none">
+          <div class="bmi-result-card">
+            <div class="bmi-result-value" id="bmiValue">—</div>
+            <div class="bmi-result-cat" id="bmiCategory">—</div>
+          </div>
+          <div class="bmi-gauge mt-3">
+            <div class="bmi-gauge-bar">
+              <div id="bmiNeedle" class="bmi-gauge-needle" style="left:0%"></div>
+              <div class="gauge-label">Underweight</div>
+              <div class="gauge-label">Normal</div>
+              <div class="gauge-label">Overweight</div>
+              <div class="gauge-label">Obese</div>
+            </div>
+          </div>
+          <div id="bmiAdvice" class="mt-3 alert"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>BMI Reference Guide</div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <thead><tr><th>BMI Range</th><th>Category</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr class="table-info"><td>&lt; 18.5</td><td>Underweight</td><td>Nutritional assessment</td></tr>
+            <tr class="table-success"><td>18.5 – 24.9</td><td>Normal</td><td>Maintain lifestyle</td></tr>
+            <tr class="table-warning"><td>25 – 29.9</td><td>Overweight</td><td>Diet & exercise</td></tr>
+            <tr class="table-danger"><td>≥ 30</td><td>Obese</td><td>Medical consultation</td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-info small mt-2 mb-0">
+          <strong>Note:</strong> BMI is a screening tool, not a diagnostic measure. Factors like muscle mass and body composition are not captured. Consult your doctor for personalized health assessment.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calculateBMI() {
+  const h = parseFloat(document.getElementById('bmiHeight').value);
+  const w = parseFloat(document.getElementById('bmiWeight').value);
+  if (!h || !w || h <= 0 || w <= 0) { alert('Please enter valid height and weight.'); return; }
+
+  const hm = h / 100;
+  const bmi = (w / (hm * hm)).toFixed(1);
+  let cat, cls, advice, pct;
+
+  if (bmi < 18.5) {
+    cat = 'Underweight'; cls = 'text-info'; pct = (bmi / 18.5) * 25;
+    advice = '⚠️ You may be underweight. Consider a nutritional assessment with your doctor. Focus on nutrient-dense foods like lentils, nuts, dairy, and whole grains.';
+  } else if (bmi < 25) {
+    cat = 'Normal Weight ✅'; cls = 'text-success'; pct = 25 + ((bmi - 18.5) / 6.5) * 25;
+    advice = '✅ Your BMI is in the healthy range. Maintain your lifestyle with regular exercise, balanced diet, and regular health checkups.';
+  } else if (bmi < 30) {
+    cat = 'Overweight'; cls = 'text-warning'; pct = 50 + ((bmi - 25) / 5) * 25;
+    advice = '⚠️ You are overweight. A 5-10% weight loss can significantly improve your health. Reduce refined carbs, increase physical activity, and consult a dietitian.';
+  } else {
+    cat = 'Obese'; cls = 'text-danger'; pct = Math.min(100, 75 + ((bmi - 30) / 10) * 25);
+    advice = '🔴 Obesity increases risk of Diabetes, Hypertension, and Heart Disease. Please consult your doctor. Focus on a medically supervised diet and exercise plan.';
+  }
+
+  document.getElementById('bmiValue').textContent = bmi;
+  document.getElementById('bmiCategory').className = 'bmi-result-cat ' + cls;
+  document.getElementById('bmiCategory').textContent = cat;
+  document.getElementById('bmiNeedle').style.left = pct + '%';
+  document.getElementById('bmiAdvice').className = 'mt-3 alert ' + (bmi < 18.5 ? 'alert-info' : bmi < 25 ? 'alert-success' : bmi < 30 ? 'alert-warning' : 'alert-danger');
+  document.getElementById('bmiAdvice').innerHTML = advice;
+  document.getElementById('bmiResult').classList.remove('d-none');
+}
+// Auto-calculate if profile data present
+window.onload = () => { if (document.getElementById('bmiHeight').value && document.getElementById('bmiWeight').value) calculateBMI(); };
+</script>
+{% endblock %}

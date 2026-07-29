@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Health History{% endblock %}
+{% block page_title %}Health History & Analytics{% endblock %}
+
+{% block content %}
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-heart-pulse me-2"></i>Blood Pressure Trend</div>
+      <div class="card-body"><canvas id="bpChart" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-droplet me-2"></i>Blood Sugar Trend</div>
+      <div class="card-body"><canvas id="sugarChart" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-activity me-2"></i>Heart Rate Trend</div>
+      <div class="card-body"><canvas id="hrChart" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lungs me-2"></i>SpO2 Trend</div>
+      <div class="card-body"><canvas id="spo2Chart" height="200"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Records Table -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table me-2"></i>All Records ({{ records.total }})</span>
+    <a href="{{ url_for('dashboard.health_monitor') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>Add Record</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Date</th><th>BP</th><th>Sugar</th><th>HR</th><th>SpO2</th><th>Temp</th><th>Mood</th><th>Symptoms</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records.items %}
+          <tr>
+            <td>{{ r.recorded_at.strftime('%d %b %Y, %H:%M') }}</td>
+            <td>
+              {% if r.blood_pressure_systolic %}
+              <span class="vital-badge bp {% if r.blood_pressure_systolic >= 140 %}high{% elif r.blood_pressure_systolic >= 130 %}elevated{% endif %}">
+                {{ r.blood_pressure_systolic }}/{{ r.blood_pressure_diastolic }}
+              </span>
+              {% else %}-{% endif %}
+            </td>
+            <td>
+              {% if r.blood_sugar %}
+              <span class="vital-badge sugar {% if r.blood_sugar >= 200 %}high{% elif r.blood_sugar >= 126 %}elevated{% endif %}">
+                {{ r.blood_sugar }}
+              </span>
+              {% else %}-{% endif %}
+            </td>
+            <td>{% if r.heart_rate %}{{ r.heart_rate }}{% else %}-{% endif %}</td>
+            <td>
+              {% if r.oxygen_saturation %}
+              <span class="{% if r.oxygen_saturation < 95 %}text-danger fw-bold{% endif %}">{{ r.oxygen_saturation }}%</span>
+              {% else %}-{% endif %}
+            </td>
+            <td>{% if r.temperature %}{{ r.temperature }}°C{% else %}-{% endif %}</td>
+            <td>{% if r.mood %}<span class="badge bg-secondary">{{ r.mood }}</span>{% else %}-{% endif %}</td>
+            <td>
+              {% if r.symptoms %}
+              {% set syms = r.symptoms | from_json %}
+              {% for s in syms[:2] %}<span class="badge bg-warning-subtle text-warning me-1">{{ s|replace('_',' ') }}</span>{% endfor %}
+              {% if syms|length > 2 %}<span class="text-muted small">+{{ syms|length - 2 }}</span>{% endif %}
+              {% else %}-{% endif %}
+            </td>
+          </tr>
+          {% if r.ai_analysis %}
+          <tr class="ai-analysis-row">
+            <td colspan="8">
+              <div class="ai-analysis-content">
+                <i class="bi bi-robot text-primary me-2"></i><strong>AI Analysis:</strong>
+                {{ r.ai_analysis[:300] }}{% if r.ai_analysis|length > 300 %}...{% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if records.pages > 1 %}
+    <div class="d-flex justify-content-center p-3">
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if records.has_prev %}
+          <li class="page-item"><a class="page-link" href="?page={{ records.prev_num }}">Previous</a></li>
+          {% endif %}
+          {% for p in records.iter_pages() %}
+            {% if p %}<li class="page-item {% if p == records.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+            {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+          {% endfor %}
+          {% if records.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ records.next_num }}">Next</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data | tojson }};
+const chartDefaults = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(0,0,0,0.04)' } }, y: { grid: { color: 'rgba(0,0,0,0.04)' } } } };
+
+function makeChart(id, label, data, color) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, { type: 'line', data: { labels: cd.labels, datasets: [{ label, data, borderColor: color, backgroundColor: color + '18', tension: 0.4, pointRadius: 4, fill: true }] }, options: chartDefaults });
+}
+
+makeChart('bpChart', 'Systolic BP', cd.bp_systolic, '#ef4444');
+makeChart('sugarChart', 'Blood Sugar', cd.blood_sugar, '#8b5cf6');
+makeChart('hrChart', 'Heart Rate', cd.heart_rate, '#10b981');
+makeChart('spo2Chart', 'SpO2 %', cd.spo2, '#3b82f6');
+</script>
+{% endblock %}

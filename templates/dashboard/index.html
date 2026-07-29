@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+  <div>
+    <h2 class="mb-1">Good {% if now.hour < 12 %}Morning{% elif now.hour < 17 %}Afternoon{% else %}Evening{% endif %},
+      <strong>{{ profile.full_name.split()[0] if profile and profile.full_name else current_user.username }}</strong> 👋</h2>
+    <p class="mb-0 text-muted">{{ now.strftime('%A, %d %B %Y') }} &nbsp;|&nbsp; Monitoring your health with IBM Granite AI</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('dashboard.health_monitor') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Log Vitals</a>
+  </div>
+</div>
+
+<!-- Emergency Alerts -->
+{% if emergency_info and emergency_info.alerts %}
+<div class="alert alert-danger d-flex align-items-start gap-2 mb-4 animated-alert" role="alert">
+  <i class="bi bi-exclamation-triangle-fill fs-4 mt-1"></i>
+  <div>
+    <strong>Health Alerts Detected!</strong>
+    <ul class="mb-0 mt-1">
+      {% for alert in emergency_info.alerts %}<li>{{ alert }}</li>{% endfor %}
+    </ul>
+    <div class="mt-2"><strong>Emergency (India):</strong> 112 &nbsp;|&nbsp; Ambulance: 102/108</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-icon"><i class="bi bi-heart-pulse"></i></div>
+      <div class="stat-value">{{ latest.blood_pressure_systolic or '--' }}/{{ latest.blood_pressure_diastolic or '--' }}</div>
+      <div class="stat-label">Blood Pressure</div>
+      <div class="stat-sub">mmHg {% if latest and latest.blood_pressure_systolic %}
+        {% if latest.blood_pressure_systolic >= 140 %}<span class="badge bg-danger">High</span>
+        {% elif latest.blood_pressure_systolic >= 130 %}<span class="badge bg-warning">Elevated</span>
+        {% else %}<span class="badge bg-success">Normal</span>{% endif %}
+      {% endif %}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--red">
+      <div class="stat-icon"><i class="bi bi-droplet-half"></i></div>
+      <div class="stat-value">{{ latest.blood_sugar or '--' }}</div>
+      <div class="stat-label">Blood Sugar</div>
+      <div class="stat-sub">mg/dL {% if latest and latest.blood_sugar %}
+        {% if latest.blood_sugar >= 200 %}<span class="badge bg-danger">High</span>
+        {% elif latest.blood_sugar >= 126 %}<span class="badge bg-warning">Elevated</span>
+        {% else %}<span class="badge bg-success">Normal</span>{% endif %}
+      {% endif %}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--green">
+      <div class="stat-icon"><i class="bi bi-activity"></i></div>
+      <div class="stat-value">{{ latest.heart_rate or '--' }}</div>
+      <div class="stat-label">Heart Rate</div>
+      <div class="stat-sub">bpm {% if latest and latest.heart_rate %}
+        {% if latest.heart_rate > 100 or latest.heart_rate < 60 %}<span class="badge bg-warning">Abnormal</span>
+        {% else %}<span class="badge bg-success">Normal</span>{% endif %}
+      {% endif %}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card--purple">
+      <div class="stat-icon"><i class="bi bi-lungs"></i></div>
+      <div class="stat-value">{{ latest.oxygen_saturation or '--' }}</div>
+      <div class="stat-label">SpO2</div>
+      <div class="stat-sub">% {% if latest and latest.oxygen_saturation %}
+        {% if latest.oxygen_saturation < 95 %}<span class="badge bg-danger">Low</span>
+        {% else %}<span class="badge bg-success">Normal</span>{% endif %}
+      {% endif %}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-graph-up me-2"></i>Vitals Trend (Last 7 Readings)</span>
+        <a href="{{ url_for('dashboard.health_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body">
+        <canvas id="vitalsChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-capsule me-2"></i>Active Medications</div>
+      <div class="card-body p-0">
+        {% if medications %}
+        <ul class="med-list">
+          {% for med in medications[:6] %}
+          <li class="med-item">
+            <div class="med-icon">💊</div>
+            <div class="med-info">
+              <div class="med-name">{{ med.name }}</div>
+              <div class="med-detail">{{ med.dosage or '' }} &middot; {{ med.frequency or '' }}</div>
+              <div class="med-timing text-muted small">⏰ {{ med.timing or 'As directed' }}</div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state p-4 text-center">
+          <i class="bi bi-capsule text-muted" style="font-size:2rem"></i>
+          <p class="text-muted mt-2 mb-2">No medications added</p>
+          <a href="{{ url_for('dashboard.medications') }}" class="btn btn-sm btn-primary">Add Medication</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Health Profile + Quick Actions -->
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-person-badge me-2"></i>Health Profile</div>
+      <div class="card-body">
+        {% if profile %}
+        <div class="profile-grid">
+          <div class="profile-item"><span class="pitem-label">Age</span><span class="pitem-val">{{ profile.age or 'N/A' }} yrs</span></div>
+          <div class="profile-item"><span class="pitem-label">Gender</span><span class="pitem-val">{{ (profile.gender or 'N/A')|title }}</span></div>
+          <div class="profile-item"><span class="pitem-label">Blood Group</span><span class="pitem-val">{{ profile.blood_group or 'N/A' }}</span></div>
+          <div class="profile-item"><span class="pitem-label">BMI</span><span class="pitem-val">{{ profile.bmi or 'N/A' }} <small class="text-muted">{{ profile.bmi_category }}</small></span></div>
+          {% if profile.chronic_conditions %}
+          {% set conditions = profile.chronic_conditions | from_json %}
+          <div class="profile-item full-width"><span class="pitem-label">Conditions</span>
+            <span class="pitem-val">{% for c in conditions %}<span class="badge bg-info-subtle text-info me-1">{{ c|replace('_',' ')|title }}</span>{% endfor %}</span>
+          </div>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('dashboard.profile') }}" class="btn btn-sm btn-outline-primary mt-3">Edit Profile</a>
+        {% else %}
+        <div class="text-center py-3">
+          <i class="bi bi-person-plus text-muted" style="font-size:2.5rem"></i>
+          <p class="mt-2 text-muted">Complete your health profile for personalized AI insights</p>
+          <a href="{{ url_for('dashboard.profile') }}" class="btn btn-primary">Setup Profile</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lightning-charge me-2"></i>Quick Actions</div>
+      <div class="card-body">
+        <div class="quick-actions-grid">
+          <a href="{{ url_for('dashboard.health_monitor') }}" class="quick-action-item">
+            <i class="bi bi-heart-pulse"></i><span>Log Vitals</span>
+          </a>
+          <a href="{{ url_for('dashboard.ai_assistant') }}" class="quick-action-item">
+            <i class="bi bi-robot"></i><span>AI Assistant</span>
+          </a>
+          <a href="{{ url_for('dashboard.risk_assessment') }}" class="quick-action-item">
+            <i class="bi bi-shield-check"></i><span>Risk Check</span>
+          </a>
+          <a href="{{ url_for('dashboard.medications') }}" class="quick-action-item">
+            <i class="bi bi-capsule"></i><span>Medications</span>
+          </a>
+          <a href="{{ url_for('dashboard.reports') }}?generate=1&period=weekly" class="quick-action-item">
+            <i class="bi bi-file-earmark-bar-graph"></i><span>AI Report</span>
+          </a>
+          <a href="{{ url_for('dashboard.bmi_calculator') }}" class="quick-action-item">
+            <i class="bi bi-calculator"></i><span>BMI Check</span>
+          </a>
+          <a href="{{ url_for('dashboard.medical_reports') }}" class="quick-action-item">
+            <i class="bi bi-upload"></i><span>Upload Report</span>
+          </a>
+          <a href="{{ url_for('dashboard.health_history') }}" class="quick-action-item">
+            <i class="bi bi-clock-history"></i><span>History</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chartData = {{ chart_data | tojson }};
+const ctx = document.getElementById('vitalsChart');
+if (ctx && chartData.labels.length) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartData.labels,
+      datasets: [
+        { label: 'Systolic BP', data: chartData.bp_sys, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', tension: 0.4, pointRadius: 4 },
+        { label: 'Diastolic BP', data: chartData.bp_dia, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', tension: 0.4, pointRadius: 4 },
+        { label: 'Blood Sugar', data: chartData.sugar, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', tension: 0.4, pointRadius: 4 },
+        { label: 'Heart Rate', data: chartData.heart_rate, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', tension: 0.4, pointRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, beginAtZero: false }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

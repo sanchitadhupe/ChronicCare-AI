@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Sign In{% endblock %}
+{% block auth_content %}
+<div class="auth-card">
+  <div class="auth-logo">
+    <span style="font-size:3rem">🏥</span>
+    <h2 class="mt-2 mb-0">HealthGuard <span style="color:var(--accent)">AI</span></h2>
+    <p class="text-muted small">Chronic Disease Monitoring Platform</p>
+  </div>
+  <div class="auth-form-wrap">
+    <h4 class="mb-1">Welcome back</h4>
+    <p class="text-muted small mb-4">Sign in to your health dashboard</p>
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label">{{ form.email.label.text }}</label>
+        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="you@example.com") }}
+        {% for err in form.email.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label d-flex justify-content-between">
+          {{ form.password.label.text }}
+        </label>
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="••••••••") }}
+        {% for err in form.password.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="mb-3 form-check">
+        {{ form.remember_me(class="form-check-input") }}
+        <label class="form-check-label small">{{ form.remember_me.label.text }}</label>
+      </div>
+      {{ form.submit(class="btn btn-primary w-100 btn-lg") }}
+    </form>
+    <p class="text-center mt-3 small">Don't have an account? <a href="{{ url_for('auth.register') }}">Create one free</a></p>
+  </div>
+  <div class="auth-footer">
+    <small class="text-muted">Powered by IBM watsonx.ai &amp; IBM Granite</small>
+  </div>
+</div>
+{% endblock %}
